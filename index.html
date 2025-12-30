@@ -431,7 +431,7 @@
 
         const weekClosings = tx.filter(r=>{
           const st = String(r.status||"").toLowerCase();
-          if(!st.includes("CloseDate")) return false;
+          if(!st.includes("Closed")) return false;
 
           const rowWeek = Number(r.week || 0);
           const rowYear = Number(r.year || 0);
@@ -462,14 +462,14 @@
 
         // ---- Volume calcs (Closed only) ----
         const monthVol = tx
-          .filter(r => r.closeDate && String(r.status).toLowerCase().includes("CloseDate")
+          .filter(r => r.closeDate && String(r.status).toLowerCase().includes("Closed")
             && r.closeDate.getMonth()===now.getMonth()
             && r.closeDate.getFullYear()===now.getFullYear()
           )
           .reduce((a,r)=>a+(r.salePrice||0),0);
 
         const ytdVol = tx
-          .filter(r => r.closeDate && String(r.status).toLowerCase().includes("CloseDate")
+          .filter(r => r.closeDate && String(r.status).toLowerCase().includes("Closed")
             && r.closeDate.getFullYear()===now.getFullYear()
           )
           .reduce((a,r)=>a+(r.salePrice||0),0);
