@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>City Insight Houston • Office TV Dashboard</title>
+
   <style>
     :root{
       --bg:#0b1220;
@@ -18,15 +19,15 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       background: linear-gradient(180deg, #0b1220 0%, #0b1220 60%, #0a1020 100%);
       color:var(--text);
+      overflow-x:hidden;
     }
 
-    /* keep content above watermark */
     .wrap{padding:32px; max-width:1600px; margin:0 auto; position:relative; z-index:1;}
 
-    .header{display:flex; align-items:center; justify-content:space-between; margin-bottom:28px;}
-    .titleWrap{display:flex; align-items:center; gap:14px;}
-    .title{font-size:34px; font-weight:900; letter-spacing:.3px}
-    .clock{opacity:.85; font-size:20px;}
+    .header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:28px;}
+    .titleWrap{display:flex; align-items:center; gap:14px; min-width:0;}
+    .title{font-size:34px; font-weight:900; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .clock{opacity:.85; font-size:20px; white-space:nowrap;}
 
     .gridGoals{display:grid; gap:24px; margin-bottom:28px;}
     @media(min-width:1200px){ .gridGoals{ grid-template-columns: 1fr 1fr; } }
@@ -40,6 +41,7 @@
       border-radius:18px;
       padding:20px;
       box-shadow:0 10px 30px rgba(0,0,0,.35);
+      min-width:0;
     }
     .card h2{margin:0 0 12px 0; font-size:24px}
 
@@ -52,20 +54,22 @@
     tbody td{padding:14px 8px; border-bottom:1px solid rgba(255,255,255,.06)}
     .rankTop{background:rgba(255,255,255,.04)}
 
-    .flex{display:flex; align-items:center; gap:14px}
+    .flex{display:flex; align-items:center; gap:14px; min-width:0;}
     .avatar{
       width:42px; height:42px; border-radius:999px; object-fit:cover;
       background:#334160; display:grid; place-items:center; color:white; font-weight:800;
+      flex:0 0 auto;
     }
+    .big{font-size:18px; font-weight:800}
+    .muted{color:var(--muted)}
 
     .closings{display:grid; gap:16px}
     .closing{
       display:flex; gap:16px; align-items:center;
       background:rgba(255,255,255,.06);
-      padding:14px; border-radius:14px
+      padding:14px; border-radius:14px;
+      min-width:0;
     }
-    .big{font-size:18px; font-weight:800}
-    .muted{color:var(--muted)}
 
     .footerGrid{display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-top:28px}
     .metric{
@@ -75,31 +79,23 @@
     .metric .lbl{font-size:14px; color:var(--muted)}
     .metric .val{font-size:26px; font-weight:900}
 
-    .notice{
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:16px;
-      padding:16px;
-      margin-bottom:24px;
-      color:#9fb0c8;
-      font-size:14px;
-    }
     .error{
       background:rgba(255,0,0,.12);
       border:1px solid rgba(255,0,0,.25);
       border-radius:16px;
       padding:16px;
-      margin-bottom:24px;
+      margin-bottom:18px;
+      display:none;
     }
 
-    /* --- Rotating Watermark --- */
+    /* Rotating watermark */
     .watermark{
       position: fixed;
       right: 28px;
       bottom: 22px;
       width: 210px;
       height: 210px;
-      opacity: 0.10;               /* subtle */
+      opacity: 0.10;
       pointer-events: none;
       z-index: 0;
       animation: spin 28s linear infinite;
@@ -110,7 +106,7 @@
       to   { transform: rotate(360deg); }
     }
 
-    /* --- Just Closed Toast --- */
+    /* Just Closed toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -127,26 +123,11 @@
       z-index: 9999;
       display: none;
     }
-    .toast .topline{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-    }
-    .toast .badge{
-      font-weight: 900;
-      letter-spacing: .6px;
-      color: #eaf6ff;
-    }
-    .toast .sub{
-      color: var(--muted);
-      margin-top: 4px;
-      font-size: 14px;
-    }
-    .toast.show{
-      display:block;
-      animation: popIn .45s ease-out forwards;
-    }
-    .toast.hide{
-      animation: popOut .35s ease-in forwards;
-    }
+    .toast .topline{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+    .toast .badge{font-weight: 900; letter-spacing: .6px; color: #eaf6ff;}
+    .toast .sub{color: var(--muted); margin-top: 4px; font-size: 14px;}
+    .toast.show{display:block; animation: popIn .45s ease-out forwards;}
+    .toast.hide{animation: popOut .35s ease-in forwards;}
     @keyframes popIn{
       from { opacity:0; transform: translateX(-50%) translateY(-12px) scale(.98); }
       to   { opacity:1; transform: translateX(-50%) translateY(0) scale(1); }
@@ -157,10 +138,12 @@
     }
   </style>
 </head>
-<body>
 
-  <!-- Rotating watermark -->
-  <img class="watermark" src="https://2946198.fs1.hubspotusercontent-na2.net/hubfs/2946198/City-Insight-Houston-logo-300x217.png" alt="CIH Watermark" />
+<body>
+  <!-- Watermark -->
+  <img class="watermark"
+       src="https://2946198.fs1.hubspotusercontent-na2.net/hubfs/2946198/City-Insight-Houston-logo-300x217.png"
+       alt="CIH Watermark" />
 
   <!-- Just Closed Toast -->
   <div id="justClosedToast" class="toast">
@@ -175,14 +158,17 @@
   <div class="wrap">
     <div class="header">
       <div class="titleWrap">
-        <!-- Optional header logo (also replace LOGO_URL_HERE). Remove this <img> if you don’t want it in header -->
-        <img src="https://2946198.fs1.hubspotusercontent-na2.net/hubfs/2946198/City-Insight-Houston-logo-300x217.png" alt="CIH" style="height:46px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(37,170,225,.25))" />
+        <img
+          src="https://2946198.fs1.hubspotusercontent-na2.net/hubfs/2946198/City-Insight-Houston-logo-300x217.png"
+          alt="City Insight Houston"
+          style="height:46px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(37,170,225,.25))"
+        />
         <div class="title">City Insight Houston • Performance Dashboard</div>
       </div>
       <div id="clock" class="clock"></div>
     </div>
 
-    <div id="err" class="error" style="display:none;"></div>
+    <div id="err" class="error"></div>
 
     <!-- GOALS -->
     <div class="gridGoals">
@@ -224,7 +210,7 @@
       </div>
     </div>
 
-    <!-- FOOTER METRICS -->
+    <!-- FOOTER -->
     <div class="footerGrid">
       <div class="metric"><div class="lbl">YTD Volume</div><div id="ytd" class="val">$0</div></div>
       <div class="metric"><div class="lbl">This Month Volume</div><div id="month" class="val">$0</div></div>
@@ -234,11 +220,13 @@
   </div>
 
   <script>
-    // ===================== CSV LINKS (ALREADY INCLUDED) =====================
-    const DATA_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=0&single=true&output=csv";
-    const GOALS_CSV_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=450156020&single=true&output=csv";
-    const AGENTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=1681501754&single=true&output=csv";
-    // ======================================================================
+    // ===== CSV links =====
+    const DATA_CSV_URL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=0&single=true&output=csv";
+    const GOALS_CSV_URL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=450156020&single=true&output=csv";
+    const AGENTS_CSV_URL =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=1681501754&single=true&output=csv";
 
     const TIMEZONE = "America/Chicago";
     const AUTO_REFRESH_MS = 60000;
@@ -284,16 +272,7 @@
       return e;
     }
 
-    // ISO week number (so “Week 1..52” is consistent)
-    function getISOWeek(date){
-      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-      const dayNum = d.getUTCDay() || 7;
-      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    }
-
-    // Minimal CSV parser (supports commas in quotes)
+    // CSV parser (handles quotes)
     function parseCSV(text){
       const rows=[]; let i=0,f="",row=[],q=false;
       for(; i<text.length; i++){
@@ -325,7 +304,7 @@
     function showError(msg){
       const el = document.getElementById("err");
       el.style.display = "block";
-      el.innerHTML = "<b>Error:</b> " + msg + "<div style='color:#9fb0c8;margin-top:8px'>Most common causes: CSV not published, wrong link (not output=csv), or sheet is private.</div>";
+      el.innerHTML = "<b>Error:</b> " + msg;
     }
     function clearError(){
       const el = document.getElementById("err");
@@ -333,7 +312,7 @@
       el.textContent = "";
     }
 
-    // --- Just Closed state ---
+    // --- Just Closed tracking ---
     const SEEN_KEY = "cih_seen_week_closings_v1";
 
     function closingKey(r){
@@ -355,13 +334,12 @@
 
     function showJustClosedToast(item){
       const toast = document.getElementById("justClosedToast");
-      const tMain = document.getElementById("toastMain");
-      const tSub  = document.getElementById("toastSub");
-      const tTime = document.getElementById("toastTime");
+      document.getElementById("toastTime").textContent =
+        new Date().toLocaleTimeString("en-US", { timeZone: TIMEZONE });
 
-      tTime.textContent = new Date().toLocaleTimeString("en-US", { timeZone: TIMEZONE });
-      tMain.textContent = item.agent;
-      tSub.textContent  = `${item.address || "Address TBA"} • ${money(item.salePrice)}`;
+      document.getElementById("toastMain").textContent = item.agent;
+      document.getElementById("toastSub").textContent =
+        `${item.address || "Address TBA"} • ${money(item.salePrice)}`;
 
       toast.style.display = "block";
       toast.classList.remove("hide");
@@ -389,28 +367,25 @@
           getCSV(AGENTS_CSV_URL),
         ]);
 
-        // Photo map
+        // ---- Photo map (keep flexible for your Sheet 3) ----
         const photoMap = new Map();
-        agentRows.forEach(a=>{
-          const key = norm(a.Agent || a.Name || a.agent || a.name);
-          const url = (a.PhotoURL || a.URL || a.url || "").trim();
+        (agentRows || []).forEach(a=>{
+          const key = norm(a.AGENT || a.Agent || a.Name || a.agent || a.name || "");
+          const url = (a.PhotoURL || a.URL || a.url || a.Photo || a.Headshot || "").trim();
           if(key && url) photoMap.set(key, url);
         });
 
-        // Normalize transactions
-        const tx = dataRows.map(r=>({
-  agent: String(r.AGENT || r.Agent || r.agent || r["Agent Name"] || "").trim(),
-  closeDate: parseDate(r.CloseDate || r["Close Date"] || r["Closing Date"]),
-  address: String(r.Address || r["Property Address"] || "").trim(),
-  salePrice: parseMoney(r.SalePrice || r["Sale Price"] || r.Price),
-  commission: parseMoney(r.Commission || r.GCI || r["Total Commission"]),
-  status: String(r.Status || "").trim(),
-  week: String(r.Week || "").trim(),
-  month: String(r.Month || "").trim(),
-  year: String(r.Year || "").trim(),
-})).filter(x=>x.agent);
+        // ---- Transactions (matches YOUR Sheet 1 headers) ----
+        const tx = (dataRows || []).map(r=>({
+          agent: String(r.AGENT || r.Agent || r.agent || "").trim(),
+          closeDate: parseDate(r.CloseDate || r["Close Date"] || r["Closing Date"]),
+          address: String(r.Address || "").trim(),
+          salePrice: parseMoney(r.SalePrice || r["Sale Price"] || r.Price),
+          commission: parseMoney(r.Commission || r.GCI || r["Total Commission"]),
+          status: String(r.Status || "").trim(),
+        })).filter(x=>x.agent);
 
-        // Leaderboard aggregation
+        // ---- Leaderboard aggregation ----
         const agg = new Map();
         tx.forEach(r=>{
           const k = norm(r.agent);
@@ -422,16 +397,18 @@
         });
         const leaderboard = [...agg.values()].sort((a,b)=>b.commission-a.commission);
 
-        // This week closings (Closed + date in week)
+        // ---- This week closings ----
         const now = new Date();
         const ws = startOfWeek(now), we = endOfWeek(now);
+
         const weekClosings = tx.filter(r=>{
-          if(String(r.status).toLowerCase() !== "closed") return false;
+          const st = String(r.status||"").toLowerCase();
+          if(!st.includes("closed")) return false;
           if(!r.closeDate) return false;
           return r.closeDate >= ws && r.closeDate <= we;
         });
 
-        // Trigger “Just Closed” for NEW closings since last refresh
+        // ---- Just Closed toast ----
         const seen = getSeenSet();
         const keysThisRefresh = weekClosings.map(closingKey);
 
@@ -447,83 +424,44 @@
           }
         }
 
-        // Volume calcs (Closed only)
+        // ---- Volume calcs (Closed only) ----
         const monthVol = tx
-          .filter(r => r.closeDate && String(r.status).toLowerCase()==="closed"
+          .filter(r => r.closeDate && String(r.status).toLowerCase().includes("closed")
             && r.closeDate.getMonth()===now.getMonth()
             && r.closeDate.getFullYear()===now.getFullYear()
           )
           .reduce((a,r)=>a+(r.salePrice||0),0);
 
         const ytdVol = tx
-          .filter(r => r.closeDate && String(r.status).toLowerCase()==="closed"
+          .filter(r => r.closeDate && String(r.status).toLowerCase().includes("closed")
             && r.closeDate.getFullYear()===now.getFullYear()
           )
           .reduce((a,r)=>a+(r.salePrice||0),0);
 
         const weekVol = weekClosings.reduce((a,r)=>a+(r.salePrice||0),0);
 
-        // Goals lookup
-// ===== GOALS (Sheet 2: GoalType, Amount, Period, Year) =====
-const now = new Date();
-const yearNum = now.getFullYear();
-const monthName = now.toLocaleString("en-US",{ month:"long", timeZone: TIMEZONE });
-const isoWeek = getISOWeek(now);
-const weekLabel = "Week " + isoWeek;
+        // ---- Goals (Sheet 2: GoalType, Amount, Period, Year) ----
+        const yearNum = now.getFullYear();
+        const clean = (s)=>String(s||"").trim().toLowerCase();
+        const isMonthly = (gt)=>clean(gt).includes("month");
+        const isWeekly  = (gt)=>clean(gt).includes("week");
 
-function clean(s){ return String(s||"").trim().toLowerCase(); }
-function isMonthly(gt){ gt = clean(gt); return gt.includes("month"); }
-function isWeekly(gt){ gt = clean(gt); return gt.includes("week"); }
+        const goalsClean = (goalRows || []).map(g => ({
+          goalType: g.GoalType,
+          amount: parseMoney(g.Amount),
+          year: Number(g.Year) || 0
+        })).filter(g => g.amount > 0 && g.year === yearNum);
 
-// normalize rows
-const goalsClean = (goalRows || []).map(g => ({
-  goalType: clean(g.GoalType),
-  amount: parseMoney(g.Amount),
-  period: String(g.Period||"").trim(),
-  periodClean: clean(g.Period),
-  year: Number(g.Year) || 0
-})).filter(g => g.amount > 0);
+        let monthlyGoal = 0;
+        let weeklyGoal = 0;
 
-// pick monthly goal
-let monthlyGoal = 0;
-{
-  // Prefer exact current month match in current year
-  const match = goalsClean.find(g =>
-    g.year === yearNum &&
-    isMonthly(g.goalType) &&
-    (g.periodClean === clean(monthName) || g.periodClean === clean(monthName).slice(0,3))
-  );
+        const monthlyRows = goalsClean.filter(g => isMonthly(g.goalType));
+        const weeklyRows  = goalsClean.filter(g => isWeekly(g.goalType));
 
-  if(match) monthlyGoal = match.amount;
+        if(monthlyRows.length) monthlyGoal = monthlyRows[monthlyRows.length - 1].amount;
+        if(weeklyRows.length)  weeklyGoal  = weeklyRows[weeklyRows.length - 1].amount;
 
-  // Fallback: any monthly goal in current year (use latest row)
-  if(!monthlyGoal){
-    const any = goalsClean.filter(g => g.year === yearNum && isMonthly(g.goalType));
-    if(any.length) monthlyGoal = any[any.length-1].amount;
-  }
-}
-
-// pick weekly goal
-let weeklyGoal = 0;
-{
-  // Prefer exact "Week X" match in current year
-  const match = goalsClean.find(g =>
-    g.year === yearNum &&
-    isWeekly(g.goalType) &&
-    clean(g.period) === clean(weekLabel)
-  );
-
-  if(match) weeklyGoal = match.amount;
-
-  // Fallback: any weekly goal in current year (use latest row)
-  if(!weeklyGoal){
-    const any = goalsClean.filter(g => g.year === yearNum && isWeekly(g.goalType));
-    if(any.length) weeklyGoal = any[any.length-1].amount;
-  }
-}
-
-
-        // Render Goals
+        // ---- Render Goals ----
         document.getElementById("monthVal").textContent = money(monthVol);
         document.getElementById("monthTarget").textContent = monthlyGoal ? money(monthlyGoal) : "—";
         const mp = monthlyGoal ? Math.min(100, Math.round((monthVol/monthlyGoal)*100)) : 0;
@@ -536,13 +474,13 @@ let weeklyGoal = 0;
         document.getElementById("weekPct").textContent = wp + "%";
         document.getElementById("weekBar").style.width = wp + "%";
 
-        // Render leaderboard
+        // ---- Render leaderboard ----
         const tbody = document.getElementById("tbody");
         tbody.innerHTML = "";
         leaderboard.forEach((r,i)=>{
           const img = photoMap.get(norm(r.agent));
           const av = img
-            ? `<img class="avatar" src="${img}" onerror="this.style.display='none'">`
+            ? `<img class="avatar" src="${img}" onerror="this.outerHTML='<div class=&quot;avatar&quot;>${initials(r.agent)}</div>'">`
             : `<div class="avatar">${initials(r.agent)}</div>`;
 
           const tr = document.createElement("tr");
@@ -557,7 +495,7 @@ let weeklyGoal = 0;
           tbody.appendChild(tr);
         });
 
-        // Render closings this week
+        // ---- Render closings ----
         const closings = document.getElementById("closings");
         closings.innerHTML = "";
         document.getElementById("noClosings").style.display = weekClosings.length ? "none" : "block";
@@ -565,14 +503,14 @@ let weeklyGoal = 0;
         weekClosings.forEach(r=>{
           const img = photoMap.get(norm(r.agent));
           const av = img
-            ? `<img class="avatar" src="${img}" onerror="this.style.display='none'">`
+            ? `<img class="avatar" src="${img}" onerror="this.outerHTML='<div class=&quot;avatar&quot;>${initials(r.agent)}</div>'">`
             : `<div class="avatar">${initials(r.agent)}</div>`;
 
           const div = document.createElement("div");
           div.className = "closing";
           div.innerHTML = `
             ${av}
-            <div>
+            <div style="min-width:0">
               <div class="big">${r.agent}</div>
               <div class="muted">${r.address || "Address TBA"}</div>
               <div class="muted">${money(r.salePrice)}</div>
@@ -581,7 +519,7 @@ let weeklyGoal = 0;
           closings.appendChild(div);
         });
 
-        // Footer
+        // ---- Footer ----
         document.getElementById("ytd").textContent = money(ytdVol);
         document.getElementById("month").textContent = money(monthVol);
         document.getElementById("agentCount").textContent = String(leaderboard.length);
