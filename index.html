@@ -238,9 +238,23 @@
     }
     function norm(s){ return String(s||"").toLowerCase().replace(/\s+/g," ").trim(); }
     function parseDate(v){
-      const d = new Date(String(v||""));
-      return Number.isNaN(d.getTime()) ? null : d;
-    }
+  const s = String(v||"").trim();
+  if(!s) return null;
+
+  // MM/DD/YYYY (your sheet format)
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){
+    const mm = Number(m[1]) - 1;
+    const dd = Number(m[2]);
+    const yyyy = Number(m[3]);
+    const dt = new Date(yyyy, mm, dd);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  // fallback for ISO etc
+  const dt = new Date(s);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
     function initials(name){
       const p = String(name||"").split(/\s+/).filter(Boolean);
       return ((p[0]?.[0]||"") + (p[1]?.[0]||"")).toUpperCase();
