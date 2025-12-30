@@ -255,6 +255,7 @@
       document.getElementById("clock").textContent = f.format(new Date());
     }
 
+    // Monday-start week (used for fallback)
     function startOfWeek(d){
       const t = new Date(d);
       const day = t.getDay(); // 0=Sun
@@ -270,6 +271,14 @@
       e.setDate(s.getDate()+7);
       e.setMilliseconds(-1);
       return e;
+    }
+
+    // WEEKNUM(date) style (Sunday start) to match typical Sheets Week column
+    function weekNumSundayStart(d){
+      const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const start = new Date(date.getFullYear(), 0, 1);
+      const days = Math.floor((date - start) / 86400000);
+      return Math.floor((days + start.getDay()) / 7) + 1;
     }
 
     // CSV parser (handles quotes)
@@ -367,7 +376,7 @@
           getCSV(AGENTS_CSV_URL),
         ]);
 
-        // ---- Photo map (keep flexible for your Sheet 3) ----
+        // ---- Photo map (kept flexible for your Sheet 3) ----
         const photoMap = new Map();
         (agentRows || []).forEach(a=>{
           const key = norm(a.AGENT || a.Agent || a.Name || a.agent || a.name || "");
@@ -378,11 +387,13 @@
         // ---- Transactions (matches YOUR Sheet 1 headers) ----
         const tx = (dataRows || []).map(r=>({
           agent: String(r.AGENT || r.Agent || r.agent || "").trim(),
-          closeDate: parseDate(r.CloseDate || r["Close Date"] || r["Closing Date"]),
+          closeDate: parseDate(r.CloseDate),
           address: String(r.Address || "").trim(),
-          salePrice: parseMoney(r.SalePrice || r["Sale Price"] || r.Price),
-          commission: parseMoney(r.Commission || r.GCI || r["Total Commission"]),
+          salePrice: parseMoney(r.SalePrice),
+          commission: parseMoney(r.Commission),
           status: String(r.Status || "").trim(),
+          week: String(r.Week || "").trim(),
+          year: String(r.Year || "").trim(),
         })).filter(x=>x.agent);
 
         // ---- Leaderboard aggregation ----
@@ -397,13 +408,23 @@
         });
         const leaderboard = [...agg.values()].sort((a,b)=>b.commission-a.commission);
 
-        // ---- This week closings ----
+        // ---- This week closings (FIX: Week+Year first, fallback to date range) ----
         const now = new Date();
+        const thisWeekNum = weekNumSundayStart(now);
+        const thisYearNum = now.getFullYear();
         const ws = startOfWeek(now), we = endOfWeek(now);
 
         const weekClosings = tx.filter(r=>{
           const st = String(r.status||"").toLowerCase();
           if(!st.includes("closed")) return false;
+
+          const rowWeek = Number(r.week || 0);
+          const rowYear = Number(r.year || 0);
+
+          if (rowWeek && rowYear) {
+            return (rowWeek === thisWeekNum && rowYear === thisYearNum);
+          }
+
           if(!r.closeDate) return false;
           return r.closeDate >= ws && r.closeDate <= we;
         });
@@ -440,8 +461,7 @@
 
         const weekVol = weekClosings.reduce((a,r)=>a+(r.salePrice||0),0);
 
-        // ---- Goals (Sheet 2: GoalType, Amount, Period, Year) ----
-        const yearNum = now.getFullYear();
+        // ---- Goals (FIX: always show latest month/week goal rows) ----
         const clean = (s)=>String(s||"").trim().toLowerCase();
         const isMonthly = (gt)=>clean(gt).includes("month");
         const isWeekly  = (gt)=>clean(gt).includes("week");
@@ -449,17 +469,17 @@
         const goalsClean = (goalRows || []).map(g => ({
           goalType: g.GoalType,
           amount: parseMoney(g.Amount),
-          year: Number(g.Year) || 0
-        })).filter(g => g.amount > 0 && g.year === yearNum);
+        })).filter(g => g.amount > 0);
 
         let monthlyGoal = 0;
         let weeklyGoal = 0;
 
-        const monthlyRows = goalsClean.filter(g => isMonthly(g.goalType));
-        const weeklyRows  = goalsClean.filter(g => isWeekly(g.goalType));
-
-        if(monthlyRows.length) monthlyGoal = monthlyRows[monthlyRows.length - 1].amount;
-        if(weeklyRows.length)  weeklyGoal  = weeklyRows[weeklyRows.length - 1].amount;
+        for (let i = goalsClean.length - 1; i >= 0; i--) {
+          const g = goalsClean[i];
+          if (!monthlyGoal && isMonthly(g.goalType)) monthlyGoal = g.amount;
+          if (!weeklyGoal && isWeekly(g.goalType)) weeklyGoal = g.amount;
+          if (monthlyGoal && weeklyGoal) break;
+        }
 
         // ---- Render Goals ----
         document.getElementById("monthVal").textContent = money(monthVol);
