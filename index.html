@@ -464,24 +464,64 @@
         const weekVol = weekClosings.reduce((a,r)=>a+(r.salePrice||0),0);
 
         // Goals lookup
-        const monthName = now.toLocaleString("en-US",{ month:"long", timeZone: TIMEZONE });
-        const yearNum = now.getFullYear();
-        const weekLabel = "Week " + getISOWeek(now);
+// ===== GOALS (Sheet 2: GoalType, Amount, Period, Year) =====
+const now = new Date();
+const yearNum = now.getFullYear();
+const monthName = now.toLocaleString("en-US",{ month:"long", timeZone: TIMEZONE });
+const isoWeek = getISOWeek(now);
+const weekLabel = "Week " + isoWeek;
 
-        const monthlyGoalRow = goalRows.find(g =>
-          String(g.GoalType||"").trim() === "Monthly Volume" &&
-          String(g.Period||"").trim() === monthName &&
-          Number(g.Year) === yearNum
-        );
+function clean(s){ return String(s||"").trim().toLowerCase(); }
+function isMonthly(gt){ gt = clean(gt); return gt.includes("month"); }
+function isWeekly(gt){ gt = clean(gt); return gt.includes("week"); }
 
-        const weeklyGoalRow = goalRows.find(g =>
-          String(g.GoalType||"").trim() === "Weekly Volume" &&
-          String(g.Period||"").trim() === weekLabel &&
-          Number(g.Year) === yearNum
-        );
+// normalize rows
+const goalsClean = (goalRows || []).map(g => ({
+  goalType: clean(g.GoalType),
+  amount: parseMoney(g.Amount),
+  period: String(g.Period||"").trim(),
+  periodClean: clean(g.Period),
+  year: Number(g.Year) || 0
+})).filter(g => g.amount > 0);
 
-        const monthlyGoal = monthlyGoalRow ? parseMoney(monthlyGoalRow.Amount) : 0;
-        const weeklyGoal  = weeklyGoalRow ? parseMoney(weeklyGoalRow.Amount) : 0;
+// pick monthly goal
+let monthlyGoal = 0;
+{
+  // Prefer exact current month match in current year
+  const match = goalsClean.find(g =>
+    g.year === yearNum &&
+    isMonthly(g.goalType) &&
+    (g.periodClean === clean(monthName) || g.periodClean === clean(monthName).slice(0,3))
+  );
+
+  if(match) monthlyGoal = match.amount;
+
+  // Fallback: any monthly goal in current year (use latest row)
+  if(!monthlyGoal){
+    const any = goalsClean.filter(g => g.year === yearNum && isMonthly(g.goalType));
+    if(any.length) monthlyGoal = any[any.length-1].amount;
+  }
+}
+
+// pick weekly goal
+let weeklyGoal = 0;
+{
+  // Prefer exact "Week X" match in current year
+  const match = goalsClean.find(g =>
+    g.year === yearNum &&
+    isWeekly(g.goalType) &&
+    clean(g.period) === clean(weekLabel)
+  );
+
+  if(match) weeklyGoal = match.amount;
+
+  // Fallback: any weekly goal in current year (use latest row)
+  if(!weeklyGoal){
+    const any = goalsClean.filter(g => g.year === yearNum && isWeekly(g.goalType));
+    if(any.length) weeklyGoal = any[any.length-1].amount;
+  }
+}
+
 
         // Render Goals
         document.getElementById("monthVal").textContent = money(monthVol);
