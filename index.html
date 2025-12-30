@@ -21,14 +21,15 @@
       color:var(--text);
       overflow-x:hidden;
     }
+
     .wrap{padding:32px; max-width:1600px; margin:0 auto; position:relative; z-index:1;}
 
-    .header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px;}
+    .header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:28px;}
     .titleWrap{display:flex; align-items:center; gap:14px; min-width:0;}
     .title{font-size:34px; font-weight:900; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .clock{opacity:.85; font-size:20px; white-space:nowrap;}
 
-    .gridGoals{display:grid; gap:24px; margin-bottom:18px;}
+    .gridGoals{display:grid; gap:24px; margin-bottom:28px;}
     @media(min-width:1200px){ .gridGoals{ grid-template-columns: 1fr 1fr; } }
 
     .gridMain{display:grid; gap:24px;}
@@ -70,7 +71,7 @@
       min-width:0;
     }
 
-    .footerGrid{display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-top:24px}
+    .footerGrid{display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-top:28px}
     .metric{
       background:linear-gradient(180deg, #111a2e 0%, #0f1729 100%);
       padding:18px; border-radius:16px; border:1px solid rgba(255,255,255,.06)
@@ -139,10 +140,12 @@
 </head>
 
 <body>
+  <!-- Watermark -->
   <img class="watermark"
        src="https://2946198.fs1.hubspotusercontent-na2.net/hubfs/2946198/City-Insight-Houston-logo-300x217.png"
        alt="CIH Watermark" />
 
+  <!-- Just Closed Toast -->
   <div id="justClosedToast" class="toast">
     <div class="topline">
       <div class="badge">✅ JUST CLOSED</div>
@@ -166,12 +169,6 @@
     </div>
 
     <div id="err" class="error"></div>
-
-    <!-- On-screen debug (helps without DevTools) -->
-    <div class="card" style="margin-bottom:18px">
-      <h2>Data Status</h2>
-      <div id="debug" class="pill">Loading…</div>
-    </div>
 
     <!-- GOALS -->
     <div class="gridGoals">
@@ -223,6 +220,7 @@
   </div>
 
   <script>
+    // ===== CSV links =====
     const DATA_CSV_URL =
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=0&single=true&output=csv";
     const GOALS_CSV_URL =
@@ -239,6 +237,25 @@
       return Number.isFinite(num) ? num : 0;
     }
     function norm(s){ return String(s||"").toLowerCase().replace(/\s+/g," ").trim(); }
+    function parseDate(v){
+  const s = String(v||"").trim();
+  if(!s) return null;
+
+  // Accept "MM/DD/YYYY" and "MM/DD/YYYY HH:MM:SS"
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+.*)?$/);
+  if(m){
+    const mm = Number(m[1]) - 1;
+    const dd = Number(m[2]);
+    const yyyy = Number(m[3]);
+    const dt = new Date(yyyy, mm, dd);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  // ISO fallback
+  const dt = new Date(s);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
     function initials(name){
       const p = String(name||"").split(/\s+/).filter(Boolean);
       return ((p[0]?.[0]||"") + (p[1]?.[0]||"")).toUpperCase();
@@ -253,7 +270,25 @@
       document.getElementById("clock").textContent = f.format(new Date());
     }
 
-    // WEEKNUM(date) style (Sunday start) — matches typical Google Sheets WEEKNUM default
+    // Monday-start week (used for fallback)
+    function startOfWeek(d){
+      const t = new Date(d);
+      const day = t.getDay(); // 0=Sun
+      const diff = (day===0 ? -6 : 1) - day; // Monday start
+      const s = new Date(t);
+      s.setDate(t.getDate()+diff);
+      s.setHours(0,0,0,0);
+      return s;
+    }
+    function endOfWeek(d){
+      const s = startOfWeek(d);
+      const e = new Date(s);
+      e.setDate(s.getDate()+7);
+      e.setMilliseconds(-1);
+      return e;
+    }
+
+    // WEEKNUM(date) style (Sunday start) to match typical Sheets Week column
     function weekNumSundayStart(d){
       const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const start = new Date(date.getFullYear(), 0, 1);
@@ -261,29 +296,21 @@
       return Math.floor((days + start.getDay()) / 7) + 1;
     }
 
-    // Parser that auto-detects TAB vs comma
+    // CSV parser (handles quotes)
     function parseCSV(text){
-      const firstLine = (text.split(/\r?\n/)[0] || "");
-      const delimiter = (firstLine.includes("\t") && !firstLine.includes(",")) ? "\t" : ",";
-
       const rows=[]; let i=0,f="",row=[],q=false;
       for(; i<text.length; i++){
         const c=text[i];
-
-        // only treat quotes specially for comma CSV
-        if (delimiter === "," && c === '"') {
+        if(c === '"'){
           if(q && text[i+1] === '"'){ f+='"'; i++; }
           else q=!q;
-        } else if(c===delimiter && !q){
+        } else if(c===',' && !q){
           row.push(f); f="";
-        } else if((c==="\n" || c==="\r") && !q){
+        } else if((c==='\n' || c==='\r') && !q){
           if(f.length || row.length){ row.push(f); rows.push(row); row=[]; f=""; }
-        } else {
-          f += c;
-        }
+        } else f+=c;
       }
       if(f.length || row.length){ row.push(f); rows.push(row); }
-
       const header = (rows[0]||[]).map(h=>h.trim());
       return rows.slice(1).map(r=>{
         const o={};
@@ -309,22 +336,26 @@
       el.textContent = "";
     }
 
-    // Just Closed tracking
-    const SEEN_KEY = "cih_seen_week_closings_v2";
+    // --- Just Closed tracking ---
+    const SEEN_KEY = "cih_seen_week_closings_v1";
+
     function closingKey(r){
-      // use agent + address + closedate string
-      return `${norm(r.agent)}|${norm(r.address)}|${String(r.closeDateRaw||"").trim()}`;
+      const d = r.closeDate ? r.closeDate.toISOString().slice(0,10) : "";
+      return `${norm(r.agent)}|${d}|${norm(r.address)}`;
     }
     function getSeenSet(){
       try{
         const raw = localStorage.getItem(SEEN_KEY);
         if(!raw) return new Set();
         return new Set(JSON.parse(raw));
-      }catch{ return new Set(); }
+      }catch{
+        return new Set();
+      }
     }
     function saveSeenSet(set){
       try{ localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(set))); }catch{}
     }
+
     function showJustClosedToast(item){
       const toast = document.getElementById("justClosedToast");
       document.getElementById("toastTime").textContent =
@@ -354,18 +385,13 @@
       clearError();
 
       try{
-        const now = new Date();
-        const thisWeekNum = weekNumSundayStart(now);   // matches Sheets WEEKNUM default
-        const thisMonthNum = now.getMonth() + 1;       // 1-12
-        const thisYearNum = now.getFullYear();
-
         const [dataRows, goalRows, agentRows] = await Promise.all([
           getCSV(DATA_CSV_URL),
           getCSV(GOALS_CSV_URL),
           getCSV(AGENTS_CSV_URL),
         ]);
 
-        // Photos
+        // ---- Photo map (kept flexible for your Sheet 3) ----
         const photoMap = new Map();
         (agentRows || []).forEach(a=>{
           const key = norm(a.AGENT || a.Agent || a.Name || a.agent || a.name || "");
@@ -373,34 +399,96 @@
           if(key && url) photoMap.set(key, url);
         });
 
-        // Transactions (use Week/Month/Year columns for totals; CloseDate kept for display only)
+        // ---- Transactions (matches YOUR Sheet 1 headers) ----
         const tx = (dataRows || []).map(r=>({
           agent: String(r.AGENT || r.Agent || r.agent || "").trim(),
-          closeDateRaw: String(r.CloseDate || "").trim(),
+          closeDate: parseDate(r.CloseDate),
           address: String(r.Address || "").trim(),
           salePrice: parseMoney(r.SalePrice),
           commission: parseMoney(r.Commission),
-          week: Number(r.Week || 0),
-          month: Number(r.Month || 0),
-          year: Number(r.Year || 0),
+          status: String(r.Status || "").trim(),
+          week: String(r.Week || "").trim(),
+          year: String(r.Year || "").trim(),
         })).filter(x=>x.agent);
 
-        // DEBUG line (no DevTools needed)
-        document.getElementById("debug").textContent =
-          `Rows — Data: ${dataRows.length} | Goals: ${goalRows.length} | Agents: ${agentRows.length} • Today: Week ${thisWeekNum}, Month ${thisMonthNum}, Year ${thisYearNum}`;
+        // ---- Leaderboard aggregation ----
+        const agg = new Map();
+        tx.forEach(r=>{
+          const k = norm(r.agent);
+          const p = agg.get(k) || { agent:r.agent, tx:0, volume:0, commission:0 };
+          p.tx += 1;
+          p.volume += r.salePrice || 0;
+          p.commission += r.commission || 0;
+          agg.set(k,p);
+        });
+        const leaderboard = [...agg.values()].sort((a,b)=>b.commission-a.commission);
 
-        // Goals: latest monthly + weekly by GoalType text
+        // ---- This week closings (FIX: Week+Year first, fallback to date range) ----
+        const now = new Date();
+        const thisWeekNum = weekNumSundayStart(now);
+        const thisYearNum = now.getFullYear();
+        const ws = startOfWeek(now), we = endOfWeek(now);
+
+        const weekClosings = tx.filter(r=>{
+          const st = String(r.status||"").toLowerCase();
+          if(!st.includes("closed")) return false;
+
+          const rowWeek = Number(r.week || 0);
+          const rowYear = Number(r.year || 0);
+
+          if (rowWeek && rowYear) {
+            return (rowWeek === thisWeekNum && rowYear === thisYearNum);
+          }
+
+          if(!r.closeDate) return false;
+          return r.closeDate >= ws && r.closeDate <= we;
+        });
+
+        // ---- Just Closed toast ----
+        const seen = getSeenSet();
+        const keysThisRefresh = weekClosings.map(closingKey);
+
+        if(seen.size === 0){
+          keysThisRefresh.forEach(k => seen.add(k));
+          saveSeenSet(seen);
+        } else {
+          const newOnes = weekClosings.filter(c => !seen.has(closingKey(c)));
+          if(newOnes.length){
+            newOnes.forEach(c => seen.add(closingKey(c)));
+            saveSeenSet(seen);
+            showJustClosedToast(newOnes[0]);
+          }
+        }
+
+        // ---- Volume calcs (Closed only) ----
+        const monthVol = tx
+          .filter(r => r.closeDate && String(r.status).toLowerCase().includes("closed")
+            && r.closeDate.getMonth()===now.getMonth()
+            && r.closeDate.getFullYear()===now.getFullYear()
+          )
+          .reduce((a,r)=>a+(r.salePrice||0),0);
+
+        const ytdVol = tx
+          .filter(r => r.closeDate && String(r.status).toLowerCase().includes("closed")
+            && r.closeDate.getFullYear()===now.getFullYear()
+          )
+          .reduce((a,r)=>a+(r.salePrice||0),0);
+
+        const weekVol = weekClosings.reduce((a,r)=>a+(r.salePrice||0),0);
+
+        // ---- Goals (FIX: always show latest month/week goal rows) ----
         const clean = (s)=>String(s||"").trim().toLowerCase();
         const isMonthly = (gt)=>clean(gt).includes("month");
         const isWeekly  = (gt)=>clean(gt).includes("week");
 
         const goalsClean = (goalRows || []).map(g => ({
           goalType: g.GoalType,
-          amount: parseMoney(g.Amount || g.AMOUNT || g["Amount "] || 0),
+          amount: parseMoney(g.Amount),
         })).filter(g => g.amount > 0);
 
         let monthlyGoal = 0;
         let weeklyGoal = 0;
+
         for (let i = goalsClean.length - 1; i >= 0; i--) {
           const g = goalsClean[i];
           if (!monthlyGoal && isMonthly(g.goalType)) monthlyGoal = g.amount;
@@ -408,21 +496,7 @@
           if (monthlyGoal && weeklyGoal) break;
         }
 
-        // Volumes (NO date parsing; uses your sheet's Month/Week/Year)
-        const ytdVol = tx
-          .filter(r => r.year === thisYearNum)
-          .reduce((a,r)=>a+(r.salePrice||0),0);
-
-        const monthVol = tx
-          .filter(r => r.year === thisYearNum && r.month === thisMonthNum)
-          .reduce((a,r)=>a+(r.salePrice||0),0);
-
-        const weekClosings = tx
-          .filter(r => r.year === thisYearNum && r.week === thisWeekNum);
-
-        const weekVol = weekClosings.reduce((a,r)=>a+(r.salePrice||0),0);
-
-        // Render goals/progress
+        // ---- Render Goals ----
         document.getElementById("monthVal").textContent = money(monthVol);
         document.getElementById("monthTarget").textContent = monthlyGoal ? money(monthlyGoal) : "—";
         const mp = monthlyGoal ? Math.min(100, Math.round((monthVol/monthlyGoal)*100)) : 0;
@@ -435,18 +509,7 @@
         document.getElementById("weekPct").textContent = wp + "%";
         document.getElementById("weekBar").style.width = wp + "%";
 
-        // Leaderboard
-        const agg = new Map();
-        tx.forEach(r=>{
-          const k = norm(r.agent);
-          const p = agg.get(k) || { agent:r.agent, tx:0, volume:0, commission:0 };
-          p.tx += 1;
-          p.volume += r.salePrice || 0;
-          p.commission += r.commission || 0;
-          agg.set(k,p);
-        });
-        const leaderboard = [...agg.values()].sort((a,b)=>b.commission-a.commission);
-
+        // ---- Render leaderboard ----
         const tbody = document.getElementById("tbody");
         tbody.innerHTML = "";
         leaderboard.forEach((r,i)=>{
@@ -467,7 +530,7 @@
           tbody.appendChild(tr);
         });
 
-        // Closings this week list
+        // ---- Render closings ----
         const closings = document.getElementById("closings");
         closings.innerHTML = "";
         document.getElementById("noClosings").style.display = weekClosings.length ? "none" : "block";
@@ -485,29 +548,13 @@
             <div style="min-width:0">
               <div class="big">${r.agent}</div>
               <div class="muted">${r.address || "Address TBA"}</div>
-              <div class="muted">${money(r.salePrice)} • Close: ${r.closeDateRaw || "—"}</div>
+              <div class="muted">${money(r.salePrice)}</div>
             </div>
           `;
           closings.appendChild(div);
         });
 
-        // Just Closed toast (new entries this week)
-        const seen = getSeenSet();
-        const keysThisRefresh = weekClosings.map(closingKey);
-
-        if(seen.size === 0){
-          keysThisRefresh.forEach(k => seen.add(k));
-          saveSeenSet(seen);
-        } else {
-          const newOnes = weekClosings.filter(c => !seen.has(closingKey(c)));
-          if(newOnes.length){
-            newOnes.forEach(c => seen.add(closingKey(c)));
-            saveSeenSet(seen);
-            showJustClosedToast(newOnes[0]);
-          }
-        }
-
-        // Footer
+        // ---- Footer ----
         document.getElementById("ytd").textContent = money(ytdVol);
         document.getElementById("month").textContent = money(monthVol);
         document.getElementById("agentCount").textContent = String(leaderboard.length);
