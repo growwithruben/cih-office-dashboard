@@ -176,7 +176,7 @@
     <div class="header">
       <div class="titleWrap">
         <!-- Optional header logo (also replace LOGO_URL_HERE). Remove this <img> if you don’t want it in header -->
-        <img src="LOGO_URL_HERE" alt="CIH" style="height:46px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(37,170,225,.25))" />
+        <img src="https://2946198.fs1.hubspotusercontent-na2.net/hubfs/2946198/City-Insight-Houston-logo-300x217.png" alt="CIH" style="height:46px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(37,170,225,.25))" />
         <div class="title">City Insight Houston • Performance Dashboard</div>
       </div>
       <div id="clock" class="clock"></div>
@@ -399,13 +399,16 @@
 
         // Normalize transactions
         const tx = dataRows.map(r=>({
-          agent: (r.Agent || r.agent || r["Agent Name"] || "").trim(),
-          closeDate: parseDate(r.CloseDate || r["Close Date"] || r["Closing Date"]),
-          address: (r.Address || r["Property Address"] || "").trim(),
-          salePrice: parseMoney(r.SalePrice || r["Sale Price"] || r.Price),
-          commission: parseMoney(r.Commission || r.GCI || r["Total Commission"]),
-          status: String(r.Status || "").trim()
-        })).filter(x=>x.agent);
+  agent: String(r.AGENT || r.Agent || r.agent || r["Agent Name"] || "").trim(),
+  closeDate: parseDate(r.CloseDate || r["Close Date"] || r["Closing Date"]),
+  address: String(r.Address || r["Property Address"] || "").trim(),
+  salePrice: parseMoney(r.SalePrice || r["Sale Price"] || r.Price),
+  commission: parseMoney(r.Commission || r.GCI || r["Total Commission"]),
+  status: String(r.Status || "").trim(),
+  week: String(r.Week || "").trim(),
+  month: String(r.Month || "").trim(),
+  year: String(r.Year || "").trim(),
+})).filter(x=>x.agent);
 
         // Leaderboard aggregation
         const agg = new Map();
