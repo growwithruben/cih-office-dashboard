@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>City Insight Houston • Office TV Dashboard</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#111a2e;
+      --muted:#9fb0c8;
+      --text:#f3f5f9;
+      --accent:#25aae1;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: linear-gradient(180deg, #0b1220 0%, #0b1220 60%, #0a1020 100%);
+      color:var(--text);
+    }
+
+    /* keep content above watermark */
+    .wrap{padding:32px; max-width:1600px; margin:0 auto; position:relative; z-index:1;}
+
+    .header{display:flex; align-items:center; justify-content:space-between; margin-bottom:28px;}
+    .titleWrap{display:flex; align-items:center; gap:14px;}
+    .title{font-size:34px; font-weight:900; letter-spacing:.3px}
+    .clock{opacity:.85; font-size:20px;}
+
+    .gridGoals{display:grid; gap:24px; margin-bottom:28px;}
+    @media(min-width:1200px){ .gridGoals{ grid-template-columns: 1fr 1fr; } }
+
+    .gridMain{display:grid; gap:24px;}
+    @media(min-width:1200px){ .gridMain{ grid-template-columns: 2fr 1fr; } }
+
+    .card{
+      background:linear-gradient(180deg, #111a2e 0%, #0f1729 100%);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:18px;
+      padding:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .card h2{margin:0 0 12px 0; font-size:24px}
+
+    .pill{font-size:14px; color:var(--muted)}
+    .progress{height:14px;background:#0e1a2e;border-radius:999px;overflow:hidden;margin-top:8px}
+    .bar{height:14px;background:linear-gradient(90deg, var(--accent), #6bd6ff); width:0%}
+
+    table{width:100%; border-collapse:collapse; font-size:16px}
+    thead th{color:#c7d2e4; text-align:left; padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.12)}
+    tbody td{padding:14px 8px; border-bottom:1px solid rgba(255,255,255,.06)}
+    .rankTop{background:rgba(255,255,255,.04)}
+
+    .flex{display:flex; align-items:center; gap:14px}
+    .avatar{
+      width:42px; height:42px; border-radius:999px; object-fit:cover;
+      background:#334160; display:grid; place-items:center; color:white; font-weight:800;
+    }
+
+    .closings{display:grid; gap:16px}
+    .closing{
+      display:flex; gap:16px; align-items:center;
+      background:rgba(255,255,255,.06);
+      padding:14px; border-radius:14px
+    }
+    .big{font-size:18px; font-weight:800}
+    .muted{color:var(--muted)}
+
+    .footerGrid{display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-top:28px}
+    .metric{
+      background:linear-gradient(180deg, #111a2e 0%, #0f1729 100%);
+      padding:18px; border-radius:16px; border:1px solid rgba(255,255,255,.06)
+    }
+    .metric .lbl{font-size:14px; color:var(--muted)}
+    .metric .val{font-size:26px; font-weight:900}
+
+    .notice{
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:16px;
+      padding:16px;
+      margin-bottom:24px;
+      color:#9fb0c8;
+      font-size:14px;
+    }
+    .error{
+      background:rgba(255,0,0,.12);
+      border:1px solid rgba(255,0,0,.25);
+      border-radius:16px;
+      padding:16px;
+      margin-bottom:24px;
+    }
+
+    /* --- Rotating Watermark --- */
+    .watermark{
+      position: fixed;
+      right: 28px;
+      bottom: 22px;
+      width: 210px;
+      height: 210px;
+      opacity: 0.10;               /* subtle */
+      pointer-events: none;
+      z-index: 0;
+      animation: spin 28s linear infinite;
+      filter: drop-shadow(0 0 10px rgba(37,170,225,.25));
+    }
+    @keyframes spin{
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* --- Just Closed Toast --- */
+    .toast{
+      position: fixed;
+      left: 50%;
+      top: 26px;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, rgba(17,26,46,.98), rgba(15,23,41,.98));
+      border: 1px solid rgba(255,255,255,.10);
+      border-left: 6px solid var(--accent);
+      border-radius: 16px;
+      padding: 14px 16px;
+      min-width: 520px;
+      max-width: 820px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.45);
+      z-index: 9999;
+      display: none;
+    }
+    .toast .topline{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .toast .badge{
+      font-weight: 900;
+      letter-spacing: .6px;
+      color: #eaf6ff;
+    }
+    .toast .sub{
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 14px;
+    }
+    .toast.show{
+      display:block;
+      animation: popIn .45s ease-out forwards;
+    }
+    .toast.hide{
+      animation: popOut .35s ease-in forwards;
+    }
+    @keyframes popIn{
+      from { opacity:0; transform: translateX(-50%) translateY(-12px) scale(.98); }
+      to   { opacity:1; transform: translateX(-50%) translateY(0) scale(1); }
+    }
+    @keyframes popOut{
+      from { opacity:1; transform: translateX(-50%) translateY(0) scale(1); }
+      to   { opacity:0; transform: translateX(-50%) translateY(-10px) scale(.98); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Rotating watermark -->
+  <img class="watermark" src="https://2946198.fs1.hubspotusercontent-na2.net/hubfs/2946198/City-Insight-Houston-logo-300x217.png" alt="CIH Watermark" />
+
+  <!-- Just Closed Toast -->
+  <div id="justClosedToast" class="toast">
+    <div class="topline">
+      <div class="badge">✅ JUST CLOSED</div>
+      <div id="toastTime" class="pill"></div>
+    </div>
+    <div id="toastMain" class="big" style="margin-top:8px"></div>
+    <div id="toastSub" class="sub"></div>
+  </div>
+
+  <div class="wrap">
+    <div class="header">
+      <div class="titleWrap">
+        <!-- Optional header logo (also replace LOGO_URL_HERE). Remove this <img> if you don’t want it in header -->
+        <img src="LOGO_URL_HERE" alt="CIH" style="height:46px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(37,170,225,.25))" />
+        <div class="title">City Insight Houston • Performance Dashboard</div>
+      </div>
+      <div id="clock" class="clock"></div>
+    </div>
+
+    <div id="err" class="error" style="display:none;"></div>
+
+    <!-- GOALS -->
+    <div class="gridGoals">
+      <div class="card">
+        <h2>Monthly Goal</h2>
+        <div class="pill"><span id="monthVal">$0</span> / <span id="monthTarget">—</span></div>
+        <div class="progress"><div id="monthBar" class="bar"></div></div>
+        <div class="pill"><span id="monthPct">0%</span> of goal</div>
+      </div>
+      <div class="card">
+        <h2>Weekly Goal</h2>
+        <div class="pill"><span id="weekVal">$0</span> / <span id="weekTarget">—</span></div>
+        <div class="progress"><div id="weekBar" class="bar"></div></div>
+        <div class="pill"><span id="weekPct">0%</span> of goal</div>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="gridMain">
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px">
+          <h2>Agent Leaderboard (by Commission)</h2>
+          <div class="pill">Highest → Lowest</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Agent</th><th>Transactions</th><th>Volume</th><th>Commission</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>🎉 Closings This Week</h2>
+        <div id="closings" class="closings"></div>
+        <div id="noClosings" class="pill" style="display:none;">No closings recorded for this week yet.</div>
+      </div>
+    </div>
+
+    <!-- FOOTER METRICS -->
+    <div class="footerGrid">
+      <div class="metric"><div class="lbl">YTD Volume</div><div id="ytd" class="val">$0</div></div>
+      <div class="metric"><div class="lbl">This Month Volume</div><div id="month" class="val">$0</div></div>
+      <div class="metric"><div class="lbl">Agents</div><div id="agentCount" class="val">0</div></div>
+      <div class="metric"><div class="lbl">Closings This Week</div><div id="weekCount" class="val">0</div></div>
+    </div>
+  </div>
+
+  <script>
+    // ===================== CSV LINKS (ALREADY INCLUDED) =====================
+    const DATA_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=0&single=true&output=csv";
+    const GOALS_CSV_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=450156020&single=true&output=csv";
+    const AGENTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnbOiYF3SEQ5MqPOU2k_d5RmDg09I-DTMpYXpP7ntQf1CYlTMFba0njBusAw8Y2ah-Tmue-F-PBOmY/pub?gid=1681501754&single=true&output=csv";
+    // ======================================================================
+
+    const TIMEZONE = "America/Chicago";
+    const AUTO_REFRESH_MS = 60000;
+
+    function money(n){ return "$" + Number(n||0).toLocaleString(); }
+    function parseMoney(v){
+      const num = Number(String(v ?? "").replace(/[^0-9.-]/g,""));
+      return Number.isFinite(num) ? num : 0;
+    }
+    function norm(s){ return String(s||"").toLowerCase().replace(/\s+/g," ").trim(); }
+    function parseDate(v){
+      const d = new Date(String(v||""));
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    function initials(name){
+      const p = String(name||"").split(/\s+/).filter(Boolean);
+      return ((p[0]?.[0]||"") + (p[1]?.[0]||"")).toUpperCase();
+    }
+
+    function tickClock(){
+      const f = new Intl.DateTimeFormat("en-US", {
+        timeZone: TIMEZONE,
+        dateStyle: "full",
+        timeStyle: "medium",
+      });
+      document.getElementById("clock").textContent = f.format(new Date());
+    }
+
+    function startOfWeek(d){
+      const t = new Date(d);
+      const day = t.getDay(); // 0=Sun
+      const diff = (day===0 ? -6 : 1) - day; // Monday start
+      const s = new Date(t);
+      s.setDate(t.getDate()+diff);
+      s.setHours(0,0,0,0);
+      return s;
+    }
+    function endOfWeek(d){
+      const s = startOfWeek(d);
+      const e = new Date(s);
+      e.setDate(s.getDate()+7);
+      e.setMilliseconds(-1);
+      return e;
+    }
+
+    // ISO week number (so “Week 1..52” is consistent)
+    function getISOWeek(date){
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // Minimal CSV parser (supports commas in quotes)
+    function parseCSV(text){
+      const rows=[]; let i=0,f="",row=[],q=false;
+      for(; i<text.length; i++){
+        const c=text[i];
+        if(c === '"'){
+          if(q && text[i+1] === '"'){ f+='"'; i++; }
+          else q=!q;
+        } else if(c===',' && !q){
+          row.push(f); f="";
+        } else if((c==='\n' || c==='\r') && !q){
+          if(f.length || row.length){ row.push(f); rows.push(row); row=[]; f=""; }
+        } else f+=c;
+      }
+      if(f.length || row.length){ row.push(f); rows.push(row); }
+      const header = (rows[0]||[]).map(h=>h.trim());
+      return rows.slice(1).map(r=>{
+        const o={};
+        header.forEach((h,idx)=> o[h || ("col_"+idx)] = (r[idx]||"").trim());
+        return o;
+      });
+    }
+
+    async function getCSV(url){
+      const res = await fetch(url, { cache:"no-store" });
+      if(!res.ok) throw new Error("CSV fetch failed ("+res.status+"): " + url);
+      return parseCSV(await res.text());
+    }
+
+    function showError(msg){
+      const el = document.getElementById("err");
+      el.style.display = "block";
+      el.innerHTML = "<b>Error:</b> " + msg + "<div style='color:#9fb0c8;margin-top:8px'>Most common causes: CSV not published, wrong link (not output=csv), or sheet is private.</div>";
+    }
+    function clearError(){
+      const el = document.getElementById("err");
+      el.style.display = "none";
+      el.textContent = "";
+    }
+
+    // --- Just Closed state ---
+    const SEEN_KEY = "cih_seen_week_closings_v1";
+
+    function closingKey(r){
+      const d = r.closeDate ? r.closeDate.toISOString().slice(0,10) : "";
+      return `${norm(r.agent)}|${d}|${norm(r.address)}`;
+    }
+    function getSeenSet(){
+      try{
+        const raw = localStorage.getItem(SEEN_KEY);
+        if(!raw) return new Set();
+        return new Set(JSON.parse(raw));
+      }catch{
+        return new Set();
+      }
+    }
+    function saveSeenSet(set){
+      try{ localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(set))); }catch{}
+    }
+
+    function showJustClosedToast(item){
+      const toast = document.getElementById("justClosedToast");
+      const tMain = document.getElementById("toastMain");
+      const tSub  = document.getElementById("toastSub");
+      const tTime = document.getElementById("toastTime");
+
+      tTime.textContent = new Date().toLocaleTimeString("en-US", { timeZone: TIMEZONE });
+      tMain.textContent = item.agent;
+      tSub.textContent  = `${item.address || "Address TBA"} • ${money(item.salePrice)}`;
+
+      toast.style.display = "block";
+      toast.classList.remove("hide");
+      toast.classList.add("show");
+
+      setTimeout(()=>{
+        toast.classList.remove("show");
+        toast.classList.add("hide");
+      }, 6500);
+
+      setTimeout(()=>{
+        toast.classList.remove("hide");
+        toast.style.display = "none";
+      }, 7100);
+    }
+
+    async function loadAndRender(){
+      tickClock();
+      clearError();
+
+      try{
+        const [dataRows, goalRows, agentRows] = await Promise.all([
+          getCSV(DATA_CSV_URL),
+          getCSV(GOALS_CSV_URL),
+          getCSV(AGENTS_CSV_URL),
+        ]);
+
+        // Photo map
+        const photoMap = new Map();
+        agentRows.forEach(a=>{
+          const key = norm(a.Agent || a.Name || a.agent || a.name);
+          const url = (a.PhotoURL || a.URL || a.url || "").trim();
+          if(key && url) photoMap.set(key, url);
+        });
+
+        // Normalize transactions
+        const tx = dataRows.map(r=>({
+          agent: (r.Agent || r.agent || r["Agent Name"] || "").trim(),
+          closeDate: parseDate(r.CloseDate || r["Close Date"] || r["Closing Date"]),
+          address: (r.Address || r["Property Address"] || "").trim(),
+          salePrice: parseMoney(r.SalePrice || r["Sale Price"] || r.Price),
+          commission: parseMoney(r.Commission || r.GCI || r["Total Commission"]),
+          status: String(r.Status || "").trim()
+        })).filter(x=>x.agent);
+
+        // Leaderboard aggregation
+        const agg = new Map();
+        tx.forEach(r=>{
+          const k = norm(r.agent);
+          const p = agg.get(k) || { agent:r.agent, tx:0, volume:0, commission:0 };
+          p.tx += 1;
+          p.volume += r.salePrice || 0;
+          p.commission += r.commission || 0;
+          agg.set(k,p);
+        });
+        const leaderboard = [...agg.values()].sort((a,b)=>b.commission-a.commission);
+
+        // This week closings (Closed + date in week)
+        const now = new Date();
+        const ws = startOfWeek(now), we = endOfWeek(now);
+        const weekClosings = tx.filter(r=>{
+          if(String(r.status).toLowerCase() !== "closed") return false;
+          if(!r.closeDate) return false;
+          return r.closeDate >= ws && r.closeDate <= we;
+        });
+
+        // Trigger “Just Closed” for NEW closings since last refresh
+        const seen = getSeenSet();
+        const keysThisRefresh = weekClosings.map(closingKey);
+
+        if(seen.size === 0){
+          keysThisRefresh.forEach(k => seen.add(k));
+          saveSeenSet(seen);
+        } else {
+          const newOnes = weekClosings.filter(c => !seen.has(closingKey(c)));
+          if(newOnes.length){
+            newOnes.forEach(c => seen.add(closingKey(c)));
+            saveSeenSet(seen);
+            showJustClosedToast(newOnes[0]);
+          }
+        }
+
+        // Volume calcs (Closed only)
+        const monthVol = tx
+          .filter(r => r.closeDate && String(r.status).toLowerCase()==="closed"
+            && r.closeDate.getMonth()===now.getMonth()
+            && r.closeDate.getFullYear()===now.getFullYear()
+          )
+          .reduce((a,r)=>a+(r.salePrice||0),0);
+
+        const ytdVol = tx
+          .filter(r => r.closeDate && String(r.status).toLowerCase()==="closed"
+            && r.closeDate.getFullYear()===now.getFullYear()
+          )
+          .reduce((a,r)=>a+(r.salePrice||0),0);
+
+        const weekVol = weekClosings.reduce((a,r)=>a+(r.salePrice||0),0);
+
+        // Goals lookup
+        const monthName = now.toLocaleString("en-US",{ month:"long", timeZone: TIMEZONE });
+        const yearNum = now.getFullYear();
+        const weekLabel = "Week " + getISOWeek(now);
+
+        const monthlyGoalRow = goalRows.find(g =>
+          String(g.GoalType||"").trim() === "Monthly Volume" &&
+          String(g.Period||"").trim() === monthName &&
+          Number(g.Year) === yearNum
+        );
+
+        const weeklyGoalRow = goalRows.find(g =>
+          String(g.GoalType||"").trim() === "Weekly Volume" &&
+          String(g.Period||"").trim() === weekLabel &&
+          Number(g.Year) === yearNum
+        );
+
+        const monthlyGoal = monthlyGoalRow ? parseMoney(monthlyGoalRow.Amount) : 0;
+        const weeklyGoal  = weeklyGoalRow ? parseMoney(weeklyGoalRow.Amount) : 0;
+
+        // Render Goals
+        document.getElementById("monthVal").textContent = money(monthVol);
+        document.getElementById("monthTarget").textContent = monthlyGoal ? money(monthlyGoal) : "—";
+        const mp = monthlyGoal ? Math.min(100, Math.round((monthVol/monthlyGoal)*100)) : 0;
+        document.getElementById("monthPct").textContent = mp + "%";
+        document.getElementById("monthBar").style.width = mp + "%";
+
+        document.getElementById("weekVal").textContent = money(weekVol);
+        document.getElementById("weekTarget").textContent = weeklyGoal ? money(weeklyGoal) : "—";
+        const wp = weeklyGoal ? Math.min(100, Math.round((weekVol/weeklyGoal)*100)) : 0;
+        document.getElementById("weekPct").textContent = wp + "%";
+        document.getElementById("weekBar").style.width = wp + "%";
+
+        // Render leaderboard
+        const tbody = document.getElementById("tbody");
+        tbody.innerHTML = "";
+        leaderboard.forEach((r,i)=>{
+          const img = photoMap.get(norm(r.agent));
+          const av = img
+            ? `<img class="avatar" src="${img}" onerror="this.style.display='none'">`
+            : `<div class="avatar">${initials(r.agent)}</div>`;
+
+          const tr = document.createElement("tr");
+          if(i < 3) tr.className = "rankTop";
+          tr.innerHTML = `
+            <td>${i+1}</td>
+            <td><div class="flex">${av}<span class="big">${r.agent}</span></div></td>
+            <td>${r.tx}</td>
+            <td>${money(r.volume)}</td>
+            <td><b>${money(r.commission)}</b></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Render closings this week
+        const closings = document.getElementById("closings");
+        closings.innerHTML = "";
+        document.getElementById("noClosings").style.display = weekClosings.length ? "none" : "block";
+
+        weekClosings.forEach(r=>{
+          const img = photoMap.get(norm(r.agent));
+          const av = img
+            ? `<img class="avatar" src="${img}" onerror="this.style.display='none'">`
+            : `<div class="avatar">${initials(r.agent)}</div>`;
+
+          const div = document.createElement("div");
+          div.className = "closing";
+          div.innerHTML = `
+            ${av}
+            <div>
+              <div class="big">${r.agent}</div>
+              <div class="muted">${r.address || "Address TBA"}</div>
+              <div class="muted">${money(r.salePrice)}</div>
+            </div>
+          `;
+          closings.appendChild(div);
+        });
+
+        // Footer
+        document.getElementById("ytd").textContent = money(ytdVol);
+        document.getElementById("month").textContent = money(monthVol);
+        document.getElementById("agentCount").textContent = String(leaderboard.length);
+        document.getElementById("weekCount").textContent = String(weekClosings.length);
+
+      } catch(e){
+        showError(e?.message || String(e));
+      }
+    }
+
+    setInterval(tickClock, 1000);
+    loadAndRender();
+    setInterval(loadAndRender, AUTO_REFRESH_MS);
+  </script>
+</body>
+</html>
