@@ -241,8 +241,8 @@
   const s = String(v||"").trim();
   if(!s) return null;
 
-  // MM/DD/YYYY (your sheet format)
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  // Accept "MM/DD/YYYY" and "MM/DD/YYYY HH:MM:SS"
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+.*)?$/);
   if(m){
     const mm = Number(m[1]) - 1;
     const dd = Number(m[2]);
@@ -251,10 +251,11 @@
     return Number.isNaN(dt.getTime()) ? null : dt;
   }
 
-  // fallback for ISO etc
+  // ISO fallback
   const dt = new Date(s);
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
+
     function initials(name){
       const p = String(name||"").split(/\s+/).filter(Boolean);
       return ((p[0]?.[0]||"") + (p[1]?.[0]||"")).toUpperCase();
